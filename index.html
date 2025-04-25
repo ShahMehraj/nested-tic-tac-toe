@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Indxx Nested Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="player-choice" class="options-page">
+    <h1>Welcome to Nested Tic-Tac-Toe</h1>
+
+    <div class="option-group">
+      <label for="game-mode">Game Mode:</label>
+      <select id="game-mode">
+        <option value="computer" selected>Play vs Computer</option>
+        <option value="two">Two Players</option>
+      </select>
+    </div>
+
+    <div class="option-group">
+      <label for="player-symbol">Your Symbol:</label>
+      <select id="player-symbol">
+        <option value="X" selected>X (Red)</option>
+        <option value="O">O (Blue)</option>
+      </select>
+    </div>
+
+    <button id="start-btn" class="btn-primary">Start Game</button>
+  </div>
+
+  <div id="ultimate-board" style="display: none;"></div>
+  <p id="turn"></p>
+  <div id="buttons-container" style="display: none;">
+    <button id="undo-btn" disabled class="btn-secondary">Undo</button>
+    <button id="reset-btn" class="btn-secondary">Reset</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
