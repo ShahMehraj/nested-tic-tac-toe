@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Indxx Nested Tic-Tac-Toe</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- Firebase App (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<!-- Firebase Realtime Database (compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script>
+  // YOUR Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBYj2siNbLm2Thr2rCzBoNtF5pBmQcbwN4",
+    authDomain: "nested-tic-tac-toe-e89c7.firebaseapp.com",
+    projectId: "nested-tic-tac-toe-e89c7",
+    storageBucket: "nested-tic-tac-toe-e89c7.firebasestorage.app",
+    messagingSenderId: "163418625850",
+    appId: "1:163418625850:web:7bddcabf816de449a16203",
+    measurementId: "G-K5PELN15QK"
+};
+  firebase.initializeApp(firebaseConfig);
+  // now window.firebase.database() is available
+</script>
+
 </head>
 <body>
   <div id="player-choice" class="options-page">
