@@ -1,4 +1,12 @@
-// —— DOM references ——
+// script.js
+// ——— Imports from Firebase modular SDK ———
+import {
+  ref,
+  push,
+  onChildAdded,
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+// ——— DOM references ———
 const ultimateBoard = document.getElementById("ultimate-board");
 const turnDisplay = document.getElementById("turn");
 const undoButton = document.getElementById("undo-btn");
@@ -6,24 +14,24 @@ const resetButton = document.getElementById("reset-btn");
 const startButton = document.getElementById("start-btn");
 const playerSymbolSel = document.getElementById("player-symbol");
 const modeSelect = document.getElementById("game-mode");
-const playerChoice = document.getElementById("player-choice");
+const playerChoiceDiv = document.getElementById("player-choice");
 const buttonsContainer = document.getElementById("buttons-container");
 
-// —— Firebase setup (compat) ——
-const db = firebase.database();
+// ——— Firebase & room setup ———
+const db = window.firebaseDB;
 const params = new URLSearchParams(window.location.search);
 let roomId, movesRef, clientId;
 
-// —— Game state ——
+// ——— Game state ———
 let boards,
   boardWinners,
   currentPlayer,
   activeBoardIndex,
   gameOver,
   moveHistory;
-let gameMode, playerSymbol, computerSymbol, opponentSymbol;
+let gameMode, playerSymbol, computerSymbol;
 
-// Winning lines for 3×3
+// ——— Win patterns for 3×3 ———
 const WIN_PATTERNS = [
   [0, 1, 2],
   [3, 4, 5],
@@ -35,7 +43,7 @@ const WIN_PATTERNS = [
   [2, 4, 6],
 ];
 
-// —— Initialize or reset in-memory state ——
+// ——— Initialize/reset all in-memory state ———
 function initVariables() {
   boards = Array(9)
     .fill(null)
@@ -47,18 +55,17 @@ function initVariables() {
   moveHistory = [];
 }
 
-// —— Render the 9 small boards ——
+// ——— Build the 9 small boards in the DOM ———
 function renderBoards() {
   ultimateBoard.innerHTML = "";
   ultimateBoard.style.display = "grid";
   buttonsContainer.style.display = "block";
-  playerChoice.style.display = "none";
+  playerChoiceDiv.style.display = "none";
 
   for (let b = 0; b < 9; b++) {
     const boardEl = document.createElement("div");
     boardEl.className = "board";
     boardEl.dataset.index = b;
-
     for (let c = 0; c < 9; c++) {
       const cellEl = document.createElement("div");
       cellEl.className = "cell";
@@ -66,35 +73,30 @@ function renderBoards() {
       cellEl.addEventListener("click", handleCellClick);
       boardEl.appendChild(cellEl);
     }
-
     ultimateBoard.appendChild(boardEl);
   }
   highlightActiveBoard();
 }
 
-// —— Handle clicks from the LOCAL player ——
+// ——— Handle a click by the local player ———
 function handleCellClick(e) {
   if (gameOver) return;
-  // only allow click on your turn
-  if (currentPlayer !== playerSymbol) return;
+  if (currentPlayer !== playerSymbol) return; // only on your turn
 
   const boardIdx = +e.currentTarget.parentElement.dataset.index;
   const cellIdx = +e.currentTarget.dataset.index;
 
-  // invalid: already taken, small-board done, wrong board
   if (boards[boardIdx][cellIdx] || boardWinners[boardIdx]) return;
   if (activeBoardIndex !== -1 && boardIdx !== activeBoardIndex) return;
 
-  // perform & broadcast
   makeMove(boardIdx, cellIdx, playerSymbol);
 }
 
-// —— Wrapper: local apply + (if two-player) broadcast ——
+// ——— Wrapper: apply locally + broadcast if two-player ———
 function makeMove(boardIdx, cellIdx, symbol) {
   makeMoveLocal(boardIdx, cellIdx, symbol);
-
   if (gameMode === "two") {
-    movesRef.push({
+    push(movesRef, {
       boardIdx,
       cellIdx,
       symbol,
@@ -103,9 +105,9 @@ function makeMove(boardIdx, cellIdx, symbol) {
   }
 }
 
-// —— Core UI/state logic (no Firebase) ——
+// ——— Core logic & UI updates (no Firebase) ———
 function makeMoveLocal(boardIdx, cellIdx, symbol) {
-  // 1) Write cell & history
+  // 1) update state & history
   boards[boardIdx][cellIdx] = symbol;
   moveHistory.push({
     boardIdx,
@@ -114,14 +116,14 @@ function makeMoveLocal(boardIdx, cellIdx, symbol) {
     prevPlayer: currentPlayer,
   });
 
-  // 2) Show symbol in DOM
+  // 2) paint the cell
   const boardEl = ultimateBoard.children[boardIdx];
   const cellEl = boardEl.children[cellIdx];
   cellEl.textContent = symbol;
   cellEl.classList.add(symbol.toLowerCase());
   highlightPreviousMove(boardIdx, cellIdx);
 
-  // 3) Check small-board win or draw
+  // 3) check small-board win/draw
   if (checkWinner(boards[boardIdx], symbol)) {
     boardWinners[boardIdx] = symbol;
     boardEl.classList.add(`won-${symbol.toLowerCase()}`);
@@ -132,7 +134,7 @@ function makeMoveLocal(boardIdx, cellIdx, symbol) {
     boardEl.dataset.winner = "T";
   }
 
-  // 4) Check ultimate win or full tie
+  // 4) check ultimate win/draw
   if (checkWinner(boardWinners, symbol)) {
     gameOver = true;
     turnDisplay.textContent = `${symbol} wins the Ultimate Tic-Tac-Toe!`;
@@ -145,15 +147,15 @@ function makeMoveLocal(boardIdx, cellIdx, symbol) {
     return;
   }
 
-  // 5) Determine next active small board
+  // 5) set next active board
   activeBoardIndex = boardWinners[cellIdx] ? -1 : cellIdx;
   highlightActiveBoard();
 
-  // 6) Switch turn
+  // 6) switch turns
   currentPlayer = currentPlayer === "X" ? "O" : "X";
   updateTurnDisplay();
 
-  // 7) If vs computer, trigger AI move
+  // 7) if vs computer, trigger AI
   if (
     gameMode === "computer" &&
     !gameOver &&
@@ -165,10 +167,9 @@ function makeMoveLocal(boardIdx, cellIdx, symbol) {
   undoButton.disabled = moveHistory.length === 0;
 }
 
-// —— Computer picks a random valid move (stub for your AI) ——
+// ——— Simple random-move AI (stub for deeper minimax) ———
 function computerMove() {
   if (gameOver) return;
-
   const boardsToUse =
     activeBoardIndex === -1 ? [...Array(9).keys()] : [activeBoardIndex];
 
@@ -185,7 +186,7 @@ function computerMove() {
   makeMove(b, i, computerSymbol);
 }
 
-// —— Helpers for UI updates ——
+// ——— UI helpers ———
 function highlightActiveBoard() {
   Array.from(ultimateBoard.children).forEach((bEl, idx) => {
     const active =
@@ -210,7 +211,6 @@ function updateTurnDisplay() {
         ? `Your turn (${playerSymbol})`
         : `Computer's turn (${computerSymbol})`;
   } else {
-    // two-player
     turnDisplay.textContent = `Player ${currentPlayer}'s turn`;
   }
 }
@@ -219,23 +219,24 @@ function checkWinner(arr, sym) {
   return WIN_PATTERNS.some((line) => line.every((i) => arr[i] === sym));
 }
 
-// —— Undo & Reset ——
+// ——— Undo & reset ———
 function undoMove() {
   if (!moveHistory.length) return;
   const last = moveHistory.pop();
-  // clear cell state
+
+  // clear cell
   boards[last.boardIdx][last.cellIdx] = "";
   const cellEl = ultimateBoard.children[last.boardIdx].children[last.cellIdx];
   cellEl.textContent = "";
   cellEl.className = "cell";
 
-  // restore board winner banner if needed
+  // clear small-board win/draw
   boardWinners[last.boardIdx] = "";
   const boardEl = ultimateBoard.children[last.boardIdx];
   boardEl.className = "board";
   delete boardEl.dataset.winner;
 
-  // restore turn & active board
+  // restore turn and active board
   activeBoardIndex = last.prevActive;
   currentPlayer = last.prevPlayer;
   gameOver = false;
@@ -246,42 +247,39 @@ function undoMove() {
 }
 
 function resetGame() {
-  // remove Firebase listener if used
-  if (movesRef) movesRef.off("child_added");
-  // reset UI
-  playerChoice.style.display = "block";
+  // detach Firebase listener if any
+  if (movesRef) onChildAdded(movesRef, () => {}); // no-op to clear
+  playerChoiceDiv.style.display = "block";
   ultimateBoard.style.display = "none";
   buttonsContainer.style.display = "none";
   turnDisplay.textContent = "";
 }
 
-// —— Event Listeners ——
+// ——— Event bindings ———
 startButton.addEventListener("click", () => {
-  // 1) Read options
+  // read options
   gameMode = modeSelect.value; // "computer" or "two"
   playerSymbol = playerSymbolSel.value; // "X" or "O"
   computerSymbol = playerSymbol === "X" ? "O" : "X";
-  opponentSymbol = computerSymbol;
 
-  // 2) If two-player → set up room + listener
+  // if two-player, set up Firebase room and listener
   if (gameMode === "two") {
     roomId = params.get("room") || prompt("Enter room code:");
     clientId = `${Date.now()}_${Math.random()}`;
-    movesRef = db.ref(`games/${roomId}/moves`);
-    movesRef.on("child_added", (snap) => {
+    movesRef = ref(db, `games/${roomId}/moves`);
+    onChildAdded(movesRef, (snap) => {
       const d = snap.val();
-      // ignore our own pushes
-      if (d.owner === clientId) return;
+      if (d.owner === clientId) return; // ignore our own
       makeMoveLocal(d.boardIdx, d.cellIdx, d.symbol);
     });
   }
 
-  // 3) Kick off
+  // start!
   initVariables();
   renderBoards();
   updateTurnDisplay();
 
-  // 4) If computer starts as X
+  // if computer starts as X
   if (gameMode === "computer" && currentPlayer === computerSymbol) {
     setTimeout(computerMove, 300);
   }
